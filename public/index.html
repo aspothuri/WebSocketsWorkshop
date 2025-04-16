@@ -4,8 +4,111 @@
   <title>Multiplayer Game</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@500&display=swap" rel="stylesheet">
+  <style>
+    .player {
+      width: 50px;
+      height: 50px;
+      position: absolute;
+      -webkit-transition-duration: .05s;
+      font-family: 'Pixelify Sans', sans-serif;
+      position: relative;
+    }
+    .playerName {
+      position: absolute;
+      top: 50px;
+    }
+    .wordHeader {
+      text-align: center;
+      width: 100%;
+      margin: 0px;
+      margin-top: 3%;
+      font-family: 'Pixelify Sans', sans-serif;
+      font-size: 80px;
+    }
+  </style>
 </head>
 <body>
-  <div>Hello world!</div>
+  <div class="wordHeader">Movement Game</div>
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    const playerElements = {};
+
+    socket.on('init', ({ players }) => {
+      const person = prompt("Enter your username: ");
+      socket.emit('nameGiven', person);
+      
+      for (const playerId in players) {
+        const player = players[playerId];
+        createPlayerElement(player);
+      }
+    });
+
+    socket.on('newPlayer', (player) => {
+      createPlayerElement(player);
+    });
+
+    socket.on('playerMoved', ({ playerId, x, y }) => {
+      const player = playerElements[playerId];
+      player.style.left = x + 'px';
+      player.style.top = y + 'px';
+
+      player.style.webkitTransform = 'rotate(10deg)';
+      runner = setInterval(function() {
+        player.style.webkitTransform = 'rotate(0deg)';
+        clearInterval(runner);
+      }, 50)
+    });
+
+    socket.on('nameSent', ({ playerId, name }) => {
+      const player = playerElements[playerId];
+      player.children[0].innerText = name;
+    });
+
+    socket.on('playerDisconnected', (playerId) => {
+      const player = playerElements[playerId];
+      player.remove();
+      delete playerElements[playerId];
+    });
+
+    document.addEventListener('keydown', (e) => {
+      let direction;
+      if (e.key === 'ArrowUp') {
+        direction = 'up';
+      } 
+      else if (e.key === 'ArrowDown') {
+        direction = 'down';
+      } 
+      else if (e.key === 'ArrowLeft') {
+        direction = 'left';
+      }
+      else if (e.key === 'ArrowRight') {
+        direction = 'right';
+      }
+
+      if (direction) {
+        socket.emit('move', direction);
+      }
+    });
+
+    function createPlayerElement(player) {
+      const playerElement = document.createElement('div');
+
+      const name = document.createElement('text');
+      name.innerText = player.name;
+      name.className = 'playerName';
+      name.style.color = player.color;
+
+      playerElement.insertAdjacentElement('afterbegin', name);
+      playerElement.className = 'player';
+      playerElement.style.background = player.color;
+      playerElement.style.left = player.x + 'px';
+      playerElement.style.top = player.y + 'px';
+
+      document.body.appendChild(playerElement);
+      playerElements[player.id] = playerElement;
+    }
+  </script>
 </body>
 </html>
